@@ -15,7 +15,6 @@ from redirector import fetch_redirect, ProxyAcquireError
 # Ограничивает одновременное выполнение fetch_redirect
 semaphore = asyncio.Semaphore(1)
 
-
 async def process_queue_item(item, bot):
     async with semaphore:
         async with AsyncSessionLocal() as session:
@@ -107,7 +106,6 @@ async def process_queue_item(item, bot):
                         text="Сводка переходов:\n" + "\n".join(text_lines)
                     )
 
-
 async def tick(bot):
     async with AsyncSessionLocal() as session:
         now = datetime.utcnow()
@@ -120,9 +118,10 @@ async def tick(bot):
         for item in items:
             asyncio.create_task(process_queue_item(item, bot))
 
-
-async def start_scheduler(app):
+def start_scheduler(app):
+    """
+    Запускает APScheduler и добавляет фоновое задание tick каждые 60 секунд.
+    """
     scheduler = AsyncIOScheduler()
-    # Каждую минуту запускаем проверку очереди
     scheduler.add_job(lambda: asyncio.create_task(tick(app.bot)), "interval", seconds=60)
     scheduler.start()
