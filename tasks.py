@@ -5,8 +5,8 @@ import random
 import uuid
 from datetime import datetime
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+from telegram.ext import ContextTypes
 
 from db import AsyncSessionLocal
 from models import Queue, Event, DeviceOption, User, ProxyLog
@@ -15,10 +15,10 @@ from redirector import fetch_redirect, ProxyAcquireError
 # Ограничивает одновременное выполнение fetch_redirect
 semaphore = asyncio.Semaphore(1)
 
-async def process_queue_item(item, bot):
+async def process_queue_item(item: Queue, bot) -> None:
     async with semaphore:
         async with AsyncSessionLocal() as session:
-            # Выбираем случайное устройство из device_options
+            # Выбираем случайное устройство
             result = await session.execute(select(DeviceOption.id))
             ids = result.scalars().all()
             chosen_id = random.choice(ids)
@@ -38,7 +38,6 @@ async def process_queue_item(item, bot):
             attempts = []
             state = "redirector_error"
 
-            # Пытаемся выполнить переход
             try:
                 (initial_url,
                  final_url,
@@ -53,7 +52,7 @@ async def process_queue_item(item, bot):
             except Exception:
                 state = "redirector_error"
 
-            # Логируем все попытки в proxy_logs
+            # Логируем proxy_attempts
             for a in attempts:
                 session.add(ProxyLog(
                     id=proxy_id,
@@ -62,10 +61,10 @@ async def process_queue_item(item, bot):
                     city=a.get("city"),
                 ))
 
-            # Сохраняем событие в events
+            # Сохраняем событие
             session.add(Event(
                 user_id=item.user_id,
-                device_option_id=device_obj.id if state == "success" else None,
+                device_option_id=(device_obj.id if state == "success" else None),
                 state=state,
                 proxy_id=proxy_id,
                 initial_url=initial_url,
@@ -74,39 +73,37 @@ async def process_queue_item(item, bot):
                 isp=isp,
             ))
 
-            # Удаляем задачу из очереди
+            # Удаляем из очереди
             await session.delete(item)
             await session.commit()
 
-            # Отправляем уведомления
+            # Уведомления
             user = await session.get(User, item.user_id)
             if user.notify_mode == "each":
                 await bot.send_message(
                     chat_id=item.user_id,
-                    text=f"Переход по ссылке {initial_url} → {final_url} ({state})",
+                    text=f"Переход: {initial_url} → {final_url} ({state})",
                     reply_to_message_id=item.message_id
                 )
             elif user.notify_mode == "summary":
-                # Если после удаления больше нет задач в очереди — отправляем сводку
+                # если очередь пуста после удаления
                 q = await session.execute(
                     select(Queue).filter_by(user_id=item.user_id)
                 )
-                remaining = q.scalars().all()
-                if not remaining:
+                if not q.scalars().all():
                     events = await session.execute(
                         select(Event).filter_by(user_id=item.user_id, state="success")
                     )
-                    successful = events.scalars().all()
-                    text_lines = [
+                    lines = [
                         f"{e.initial_url} → {e.final_url} в {e.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
-                        for e in successful
+                        for e in events.scalars().all()
                     ]
                     await bot.send_message(
                         chat_id=item.user_id,
-                        text="Сводка переходов:\n" + "\n".join(text_lines)
+                        text="Сводка переходов:\n" + "\n".join(lines)
                     )
 
-async def tick(bot):
+async def tick(bot) -> None:
     async with AsyncSessionLocal() as session:
         now = datetime.utcnow()
         result = await session.execute(
@@ -114,16 +111,19 @@ async def tick(bot):
                 (Queue.transition_time <= now) | (Queue.transition_time.is_(None))
             )
         )
-        items = result.scalars().all()
-        for item in items:
+        for item in result.scalars().all():
+            # запустить обработку без await
             asyncio.create_task(process_queue_item(item, bot))
 
-def start_scheduler(app):
+def setup_scheduler(app) -> None:
     """
-    Запускает APScheduler и добавляет фоновое задание tick каждые 60 секунд.
-    Привязываем scheduler к главному event loop через event_loop=...
+    Настроить планировщик через встроенный JobQueue PTB.
+    Вызывать после register_handlers(app), до run_polling().
     """
-    loop = asyncio.get_event_loop()
-    scheduler = AsyncIOScheduler(event_loop=loop)
-    scheduler.add_job(lambda: asyncio.create_task(tick(app.bot)), "interval", seconds=60)
-    scheduler.start()
+    # Запустить tick каждую минуту
+    app.job_queue.run_repeating(
+        callback=lambda context: asyncio.create_task(tick(context.bot)),
+        interval=60,
+        first=0,
+        name="queue_tick"
+    )
