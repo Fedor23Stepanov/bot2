@@ -1,0 +1,290 @@
+{
+    "1": {
+        "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Google Pixel 8 Pro"
+    },
+    "2": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+        "css_size": [393, 852],
+        "platform": "iPhone",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Apple iPhone 15 Pro"
+    },
+    "3": {
+        "ua": "Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.111 Mobile Safari/537.36",
+        "css_size": [360, 800],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Samsung Galaxy S23"
+    },
+    "4": {
+        "ua": "Mozilla/5.0 (Linux; Android 12; SM-A528B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.134 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Samsung Galaxy A52s 5G"
+    },
+    "5": {
+        "ua": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.78 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Samsung Galaxy S24 Ultra"
+    },
+    "6": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "css_size": [390, 844],
+        "platform": "iPhone",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Apple iPhone 14"
+    },
+    "7": {
+        "ua": "Mozilla/5.0 (Linux; Android 13; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.162 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 2.75,
+        "mobile": true,
+        "model": "Samsung Galaxy A54 5G"
+    },
+    "8": {
+        "ua": "Mozilla/5.0 (Linux; Android 13; SM-M336BU) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.234 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Samsung Galaxy M33 5G"
+    },
+    "9": {
+        "ua": "Mozilla/5.0 (Linux; Android 14; SM-G781B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36",
+        "css_size": [360, 800],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Samsung Galaxy S20 FE"
+    },
+    "10": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.86 Safari/537.36",
+        "css_size": [1920, 1080],
+        "platform": "Win32",
+        "dpr": 1,
+        "mobile": false,
+        "model": "Windows 10 PC"
+    },
+    "11": {
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "css_size": [1440, 900],
+        "platform": "MacIntel",
+        "dpr": 2,
+        "mobile": false,
+        "model": "Apple MacBook Pro 13\" (Intel, 2020)"
+    },
+    "12": {
+        "ua": "Mozilla/5.0 (Linux; Android 10; SM-G960F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.5481.154 Mobile Safari/537.36",
+        "css_size": [360, 740],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Samsung Galaxy S9"
+    },
+    "13": {
+        "ua": "Mozilla/5.0 (Linux; Android 10; SM-N960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.136 Mobile Safari/537.36",
+        "css_size": [412, 846],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Samsung Galaxy Note 9"
+    },
+    "14": {
+        "ua": "Mozilla/5.0 (Linux; Android 9; LM-Q720) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.87 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "LG Stylo 5"
+    },
+    "15": {
+        "ua": "Mozilla/5.0 (Linux; Android 9; LM-X420) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.74 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2,
+        "mobile": true,
+        "model": "LG K40"
+    },
+    "16": {
+        "ua": "Mozilla/5.0 (Linux; Android 8.1.0; LM-Q710(FGN)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.181 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "LG Stylo 4"
+    },
+    "17": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_7_9 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/121.0.6167.96 Mobile/15E148 Safari/604.1",
+        "css_size": [375, 812],
+        "platform": "iPhone",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Apple iPhone 13 Pro"
+    },
+    "18": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/120.0 Mobile/15E148 Safari/605.1.15",
+        "css_size": [375, 667],
+        "platform": "iPhone",
+        "dpr": 2,
+        "mobile": true,
+        "model": "Apple iPhone SE (2022)"
+    },
+    "19": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_8_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1 Mobile/15E148 Safari/604.1",
+        "css_size": [360, 780],
+        "platform": "iPhone",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Apple iPhone 12 Mini"
+    },
+    "20": {
+        "ua": "Mozilla/5.0 (Linux; Android 10; ELS-NX9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.92 HuaweiBrowser/16.0.4.300 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Huawei P40 Pro"
+    },
+    "21": {
+        "ua": "Mozilla/5.0 (Linux; Android 11; M2011K2C) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.92 MQQBrowser/13.6 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Xiaomi Mi 11"
+    },
+    "22": {
+        "ua": "Mozilla/5.0 (Linux; Android 13; CPH2173) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.163 Mobile Safari/537.36 OPR/76.0.4017.123",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "OPPO Find X3 Pro"
+    },
+    "23": {
+        "ua": "Mozilla/5.0 (Linux; Android 12; RMX2202) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.92 Mobile Safari/537.36 HeyTapBrowser/41.7.1.2",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Realme GT 5G"
+    },
+    "24": {
+        "ua": "Mozilla/5.0 (Linux; Android 11; V2040) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.5563.116 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Vivo Y31"
+    },
+    "25": {
+        "ua": "Mozilla/5.0 (Linux; Android 11; ASUS_I005D) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.5993.90 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Asus ROG Phone 5"
+    },
+    "26": {
+        "ua": "Mozilla/5.0 (Linux; Android 13; XQ-DS54) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.234 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Sony Xperia 1 V"
+    },
+    "27": {
+        "ua": "Mozilla/5.0 (Linux; Android 14; A065) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.107 Mobile Safari/537.36",
+        "css_size": [412, 915],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Nothing Phone (2a)"
+    },
+    "28": {
+        "ua": "Mozilla/5.0 (Linux; Android 12; PEEM00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5414.86 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 3,
+        "mobile": true,
+        "model": "OPPO Find X3 Pro"
+    },
+    "29": {
+        "ua": "Mozilla/5.0 (Linux; Android 12; RMX2202) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.61 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Realme GT 5G"
+    },
+    "30": {
+        "ua": "Mozilla/5.0 (Linux; Android 11; V2040) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Mobile Safari/537.36",
+        "css_size": [360, 780],
+        "platform": "Linux aarch64",
+        "dpr": 2.5,
+        "mobile": true,
+        "model": "Vivo Y31"
+    },
+    "31": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.106 Safari/537.36",
+        "css_size": [1920, 1200],
+        "platform": "Win32",
+        "dpr": 2,
+        "mobile": false,
+        "model": "Dell XPS 13 (9310)"
+    },
+    "32": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.106 Safari/537.36",
+        "css_size": [1920, 1080],
+        "platform": "Win32",
+        "dpr": 2,
+        "mobile": false,
+        "model": "HP Spectre x360 14"
+    },
+    "33": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.106 Safari/537.36",
+        "css_size": [1920, 1080],
+        "platform": "Win32",
+        "dpr": 2,
+        "mobile": false,
+        "model": "Lenovo ThinkPad X1 Carbon Gen 9"
+    },
+    "34": {
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "css_size": [2560, 1600],
+        "platform": "MacIntel",
+        "dpr": 2,
+        "mobile": false,
+        "model": "MacBook Pro 14\" M1 Pro"
+    },
+    "35": {
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "css_size": [2560, 1664],
+        "platform": "MacIntel",
+        "dpr": 2,
+        "mobile": false,
+        "model": "MacBook Air 15\" M2"
+    },
+    "36": {
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+        "css_size": [393, 852],
+        "platform": "iPhone",
+        "dpr": 3,
+        "mobile": true,
+        "model": "Apple iPhone 15 Pro Max"
+    }
+}   
