@@ -5,8 +5,8 @@ import random
 import uuid
 from datetime import datetime
 
+from telegram.ext import CallbackContext
 from sqlalchemy import select
-from telegram.ext import ContextTypes
 
 from db import AsyncSessionLocal
 from models import Queue, Event, DeviceOption, User, ProxyLog
@@ -15,7 +15,7 @@ from redirector import fetch_redirect, ProxyAcquireError
 # Ограничивает одновременное выполнение fetch_redirect
 semaphore = asyncio.Semaphore(1)
 
-async def process_queue_item(item: Queue, bot) -> None:
+async def process_queue_item(item, bot):
     async with semaphore:
         async with AsyncSessionLocal() as session:
             # Выбираем случайное устройство
@@ -30,7 +30,6 @@ async def process_queue_item(item: Queue, bot) -> None:
                 "dpr": device_obj.dpr,
                 "mobile": device_obj.mobile,
                 "model": device_obj.model,
-                "id": device_obj.id,
             }
 
             proxy_id = str(uuid.uuid4())
@@ -103,7 +102,8 @@ async def process_queue_item(item: Queue, bot) -> None:
                         text="Сводка переходов:\n" + "\n".join(lines)
                     )
 
-async def tick(bot) -> None:
+async def tick(context: CallbackContext):
+    bot = context.bot
     async with AsyncSessionLocal() as session:
         now = datetime.utcnow()
         result = await session.execute(
@@ -111,19 +111,14 @@ async def tick(bot) -> None:
                 (Queue.transition_time <= now) | (Queue.transition_time.is_(None))
             )
         )
-        for item in result.scalars().all():
-            # запустить обработку без await
+        items = result.scalars().all()
+        for item in items:
             asyncio.create_task(process_queue_item(item, bot))
 
-def setup_scheduler(app) -> None:
+def setup_scheduler(app):
     """
-    Настроить планировщик через встроенный JobQueue PTB.
-    Вызывать после register_handlers(app), до run_polling().
+    Настраивает встроенный JobQueue PTB:
+      - tick каждую минуту, первый запуск сразу.
+    Вызывать после register_handlers(app) и перед app.run_polling().
     """
-    # Запустить tick каждую минуту
-    app.job_queue.run_repeating(
-        callback=lambda context: asyncio.create_task(tick(context.bot)),
-        interval=60,
-        first=0,
-        name="queue_tick"
-    )
+    app.job_queue.run_repeating(tick, interval=60, first=0)
