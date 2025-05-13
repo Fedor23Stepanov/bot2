@@ -1,65 +1,110 @@
 # keyboards.py
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def main_menu(role: str) -> InlineKeyboardMarkup:
-    buttons = [InlineKeyboardButton('Очередь', callback_data='show_queue')]
-    if role in ('moderator','admin'):
-        buttons.append(InlineKeyboardButton('Пользователи', callback_data='show_users'))
-    buttons.extend([
-        InlineKeyboardButton('Статистика', callback_data='show_stats'),
-        InlineKeyboardButton('История запросов', callback_data='show_history'),
-        InlineKeyboardButton('Уведомления', callback_data='show_notifications'),
-        InlineKeyboardButton('Режим перехода', callback_data='show_transition_mode'),
-    ])
-    return InlineKeyboardMarkup.from_column(buttons)
+    """
+    Главная меню-раскладка:
+      - Все пользователи: Очередь, Статистика, История запросов, Уведомления, Режим перехода
+      - Модераторы и админы дополнительно: Пользователи
+      - Только админы: Добавить пользователя, Добавить модератора
+    """
+    buttons = [
+        [InlineKeyboardButton("Очередь", callback_data="show_queue")],
+        [InlineKeyboardButton("Статистика", callback_data="show_stats")],
+        [InlineKeyboardButton("История запросов", callback_data="show_history")],
+        [InlineKeyboardButton("Уведомления", callback_data="show_notifications")],
+        [InlineKeyboardButton("Режим перехода", callback_data="show_transition_mode")],
+    ]
 
+    if role in ("moderator", "admin"):
+        buttons.append([InlineKeyboardButton("Пользователи", callback_data="show_users")])
 
-def queue_menu(items) -> InlineKeyboardMarkup:
-    buttons = []
-    for item in items:
-        buttons.append(
-            [InlineKeyboardButton(item.url, url=item.url),
-             InlineKeyboardButton('Удалить', callback_data=f'del_queue:{item.id}')]
-        )
+    if role == "admin":
+        buttons.append([InlineKeyboardButton("Добавить пользователя", callback_data="add_user")])
+        buttons.append([InlineKeyboardButton("Добавить модератора", callback_data="add_moderator")])
+
     return InlineKeyboardMarkup(buttons)
 
 
-def notifications_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup.from_column([
-        InlineKeyboardButton('Каждый переход', callback_data='set_notify:each'),
-        InlineKeyboardButton('По окончании очереди', callback_data='set_notify:summary'),
-        InlineKeyboardButton('Отключены', callback_data='set_notify:none'),
-    ])
-
-
-def transition_mode_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup.from_column([
-        InlineKeyboardButton('Сразу', callback_data='set_transition:immediate'),
-        InlineKeyboardButton('В течение дня', callback_data='set_transition:daily'),
-    ])
-
-
-def users_menu(users, current_user) -> InlineKeyboardMarkup:
+def queue_menu(items) -> InlineKeyboardMarkup:
+    """
+    Меню отображения очереди: для каждой ссылки — кнопка удаления,
+    и кнопка "Назад" внизу.
+    """
     buttons = []
-    for u in users:
-        if u.user_id != current_user.id and \
-           (current_user.role=='admin' or (current_user.role=='moderator' and u.role=='user')):
-            buttons.append(
-                [InlineKeyboardButton(f'@{u.username}', callback_data='noop'),
-                 InlineKeyboardButton('Удалить', callback_data=f'del_user:{u.user_id}')]
-            )
-        else:
-            buttons.append([InlineKeyboardButton(f'@{u.username}', callback_data='noop')])
-    buttons.append([InlineKeyboardButton('Добавить пользователя', callback_data='add_user')])
-    if current_user.role=='admin':
-        buttons.append([InlineKeyboardButton('Добавить модератора', callback_data='add_moderator')])
+    for item in items:
+        buttons.append([
+            InlineKeyboardButton("Удалить", callback_data=f"del_queue:{item.id}"),
+            InlineKeyboardButton(item.url, callback_data="noop")  # noop, просто для отображения
+        ])
+    buttons.append([InlineKeyboardButton("Назад", callback_data="back_to_menu")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def notifications_menu(current_mode: str) -> InlineKeyboardMarkup:
+    """
+    Меню выбора режима уведомлений.
+    """
+    modes = [
+        ("Каждый переход", "notify_each", "each"),
+        ("По окончании очереди", "notify_summary", "summary"),
+        ("Отключены", "notify_none", "none"),
+    ]
+    buttons = []
+    for label, data, mode in modes:
+        prefix = "✔️ " if current_mode == mode else ""
+        buttons.append([InlineKeyboardButton(prefix + label, callback_data=data)])
+    buttons.append([InlineKeyboardButton("Назад", callback_data="show_menu")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def transition_mode_menu(current_mode: str) -> InlineKeyboardMarkup:
+    """
+    Меню выбора режима перехода.
+    """
+    modes = [
+        ("Сразу", "mode_immediate", "immediate"),
+        ("В течение дня", "mode_daily", "daily"),
+    ]
+    buttons = []
+    for label, data, mode in modes:
+        prefix = "✔️ " if current_mode == mode else ""
+        buttons.append([InlineKeyboardButton(prefix + label, callback_data=data)])
+    buttons.append([InlineKeyboardButton("Назад", callback_data="show_menu")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def users_menu(users) -> InlineKeyboardMarkup:
+    """
+    Меню списка пользователей с кнопками удаления,
+    и кнопками добавления внизу.
+    """
+    buttons = []
+    for user in users:
+        buttons.append([
+            InlineKeyboardButton(f"@{user.username}", callback_data="noop"),
+            InlineKeyboardButton("Удалить", callback_data=f"del_user:{user.user_id}")
+        ])
+    buttons.append([InlineKeyboardButton("Добавить пользователя", callback_data="add_user")])
+    buttons.append([InlineKeyboardButton("Добавить модератора", callback_data="add_moderator")])
+    buttons.append([InlineKeyboardButton("Назад", callback_data="show_menu")])
     return InlineKeyboardMarkup(buttons)
 
 
 def add_user_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup.from_button(
-        InlineKeyboardButton('Отмена', callback_data='cancel_add')
-    )
+    """
+    Клавиатура с кнопкой Отмена при вводе ника нового пользователя.
+    """
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Отмена", callback_data="cancel")]
+    ])
+
 
 def add_moderator_menu() -> InlineKeyboardMarkup:
-    return add_user_menu()  # аналогично
+    """
+    Клавиатура с кнопкой Отмена при вводе ника нового модератора.
+    """
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Отмена", callback_data="cancel")]
+    ])
