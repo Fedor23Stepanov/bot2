@@ -73,7 +73,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text or ""
 
-    # --- Флоу добавления нового пользователя/модератора ---
+    # Флоу добавления нового пользователя/модератора
     role_to_add = context.user_data.get("adding_role")
     inviter_id = context.user_data.get("inviter_id")
     if role_to_add:
@@ -101,7 +101,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop("inviter_id", None)
         return
 
-    # --- Обычная обработка ссылок ---
+    # Обычная обработка ссылок
     async with AsyncSessionLocal() as session:
         db_user = await session.get(User, user.id)
         if not db_user:
@@ -155,7 +155,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await session.commit()
         await update.message.reply_text("Ссылка добавлена в очередь.")
 
-# Показать очередь (из кнопки и /queue)
+# Показать очередь
 async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     async with AsyncSessionLocal() as session:
@@ -176,6 +176,11 @@ async def on_delete_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if item:
             await session.delete(item)
             await session.commit()
+    await on_queue(update, context)
+
+# Обработчик нажатия «Очередь» из главного меню
+async def show_queue_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
     await on_queue(update, context)
 
 # Статистика
@@ -314,7 +319,6 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         await session.delete(db_target)
         await session.commit()
-    # Обновляем список
     await show_users(update, context)
 
 # Отмена
@@ -331,20 +335,20 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
-    app.add_handler(CallbackQueryHandler(back_to_menu, pattern=r"^back_to_menu$"))
-    app.add_handler(CallbackQueryHandler(show_queue_cb, pattern=r"^show_queue$"))
-    app.add_handler(CallbackQueryHandler(show_stats, pattern=r"^show_stats$"))
-    app.add_handler(CallbackQueryHandler(show_history, pattern=r"^show_history$"))
-    app.add_handler(CallbackQueryHandler(show_notifications, pattern=r"^show_notifications$"))
-    app.add_handler(CallbackQueryHandler(set_notify, pattern=r"^notify_"))
-    app.add_handler(CallbackQueryHandler(show_transition_mode, pattern=r"^show_transition_mode$"))
+    app.add_handler(CallbackQueryHandler(back_to_menu,        pattern=r"^back_to_menu$"))
+    app.add_handler(CallbackQueryHandler(show_queue_cb,       pattern=r"^show_queue$"))
+    app.add_handler(CallbackQueryHandler(show_stats,          pattern=r"^show_stats$"))
+    app.add_handler(CallbackQueryHandler(show_history,        pattern=r"^show_history$"))
+    app.add_handler(CallbackQueryHandler(show_notifications,  pattern=r"^show_notifications$"))
+    app.add_handler(CallbackQueryHandler(set_notify,          pattern=r"^notify_"))
+    app.add_handler(CallbackQueryHandler(show_transition_mode,pattern=r"^show_transition_mode$"))
     app.add_handler(CallbackQueryHandler(set_transition_mode, pattern=r"^mode_"))
-    app.add_handler(CallbackQueryHandler(show_users, pattern=r"^show_users$"))
-    app.add_handler(CallbackQueryHandler(add_user_prompt, pattern=r"^add_user$"))
-    app.add_handler(CallbackQueryHandler(add_moderator_prompt, pattern=r"^add_moderator$"))
-    app.add_handler(CallbackQueryHandler(delete_user, pattern=r"^del_user:"))
-    app.add_handler(CallbackQueryHandler(on_delete_queue, pattern=r"^del_queue:"))
-    app.add_handler(CallbackQueryHandler(cancel, pattern=r"^cancel$"))
-    app.add_handler(CallbackQueryHandler(noop_callback, pattern=r"^noop$"))
+    app.add_handler(CallbackQueryHandler(show_users,          pattern=r"^show_users$"))
+    app.add_handler(CallbackQueryHandler(add_user_prompt,     pattern=r"^add_user$"))
+    app.add_handler(CallbackQueryHandler(add_moderator_prompt,pattern=r"^add_moderator$"))
+    app.add_handler(CallbackQueryHandler(delete_user,         pattern=r"^del_user:"))
+    app.add_handler(CallbackQueryHandler(on_delete_queue,     pattern=r"^del_queue:"))
+    app.add_handler(CallbackQueryHandler(cancel,              pattern=r"^cancel$"))
+    app.add_handler(CallbackQueryHandler(noop_callback,       pattern=r"^noop$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
     app.add_handler(CommandHandler("queue", on_queue))
