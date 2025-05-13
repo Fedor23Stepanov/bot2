@@ -121,7 +121,9 @@ async def tick(bot):
 def start_scheduler(app):
     """
     Запускает APScheduler и добавляет фоновое задание tick каждые 60 секунд.
+    Привязываем scheduler к главному event loop через event_loop=...
     """
-    scheduler = AsyncIOScheduler()
+    loop = asyncio.get_event_loop()
+    scheduler = AsyncIOScheduler(event_loop=loop)
     scheduler.add_job(lambda: asyncio.create_task(tick(app.bot)), "interval", seconds=60)
     scheduler.start()
