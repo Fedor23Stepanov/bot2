@@ -6,7 +6,7 @@ from telegram.ext import ApplicationBuilder
 from config import TELEGRAM_TOKEN
 from db import init_db
 from handlers import register_handlers
-from tasks import start_scheduler
+from tasks import setup_scheduler
 
 # ========== LOGGING CONFIG ==========
 logging.basicConfig(
@@ -29,7 +29,7 @@ def main():
     register_handlers(app)
 
     # 4) Запуск APScheduler (синхронно)
-    start_scheduler(app)
+    setup_scheduler(app)
 
     # 5) Запуск polling (не await!)
     app.run_polling()
