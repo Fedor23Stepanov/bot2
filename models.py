@@ -16,7 +16,7 @@ class User(Base):
     role            = Column(Enum("admin","moderator","user"), nullable=False)
     status          = Column(Enum("activ","pending"), nullable=False)
     notify_mode     = Column(Enum("each","summary","none"), 
-                               nullable=False, default="none")
+                               nullable=False, default="each")
     transition_mode = Column(Enum("immediate","daily"), 
                                nullable=False, default="immediate")
     invited_by      = Column(Integer, ForeignKey("users.user_id"), nullable=True)
