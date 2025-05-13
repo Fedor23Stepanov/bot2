@@ -3,7 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from db import AsyncSessionLocal
 from models import Queue, ProxyLog, Event, DeviceOption
-from crawler.redirector import fetch_redirect
+from redirector import fetch_redirect
 import uuid, random
 
 semaphore = asyncio.Semaphore(1)
