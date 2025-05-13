@@ -33,7 +33,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_menu(update.effective_user.role)
     )
 
-# Обработчик «ничего не делать» для noop-кнопок
+# noop для кнопок без действия
 async def noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
@@ -178,11 +178,7 @@ async def on_delete_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await session.commit()
     await on_queue(update, context)
 
-# Обработчики меню
-async def show_queue_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    await on_queue(update, context)
-
+# Статистика
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     user = update.effective_user
@@ -212,8 +208,126 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_user = await session.get(User, user.id)
     await update.callback_query.message.reply_text(text, reply_markup=main_menu(db_user.role))
 
-# ... остальные callback-хэндлеры (show_history, show_notifications, set_notify,
-#     show_transition_mode, set_transition_mode, show_users, delete_user, cancel) ...
+# История запросов
+async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        res = await session.execute(
+            select(Event)
+              .filter(Event.user_id==user.id, Event.state.in_(["success","proxy_error"]))
+              .order_by(Event.timestamp.desc())
+              .limit(20)
+        )
+        events = res.scalars().all()
+    if not events:
+        text = "История запросов пуста."
+    else:
+        lines = []
+        for e in events:
+            ts = e.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            if e.state == "success":
+                lines.append(f"{ts}: {e.initial_url} → {e.final_url}")
+            else:
+                lines.append(f"{ts}: {e.initial_url} ({e.state})")
+        text = "История запросов:\n" + "\n".join(lines)
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+    await update.callback_query.message.reply_text(text, reply_markup=main_menu(db_user.role))
+
+# Уведомления
+async def show_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+    kb = notifications_menu(db_user.notify_mode)
+    await update.callback_query.message.reply_text("Уведомления", reply_markup=kb)
+
+async def set_notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    mode = {
+        "notify_each": "each",
+        "notify_summary": "summary",
+        "notify_none": "none"
+    }[update.callback_query.data]
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+        db_user.notify_mode = mode
+        await session.commit()
+    labels = {"each": "Каждый переход", "summary": "По окончании очереди", "none": "Отключены"}
+    await update.callback_query.message.reply_text(
+        f"Уведомления: {labels[mode]}", reply_markup=main_menu(db_user.role)
+    )
+
+# Режим перехода
+async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+    kb = transition_mode_menu(db_user.transition_mode)
+    await update.callback_query.message.reply_text("Режим перехода", reply_markup=kb)
+
+async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    mode = {
+        "mode_immediate": "immediate",
+        "mode_daily": "daily"
+    }[update.callback_query.data]
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+        db_user.transition_mode = mode
+        await session.commit()
+    labels = {"immediate": "Сразу", "daily": "В течение дня"}
+    await update.callback_query.message.reply_text(
+        f"Режим перехода: {labels[mode]}", reply_markup=main_menu(db_user.role)
+    )
+
+# Пользователи
+async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    async with AsyncSessionLocal() as session:
+        res = await session.execute(select(User).order_by(User.role))
+        all_users = res.scalars().all()
+    await update.callback_query.message.reply_text("Пользователи", reply_markup=users_menu(all_users))
+
+async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    _, sid = update.callback_query.data.split(":")
+    target_id = int(sid)
+    actor = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_actor = await session.get(User, actor.id)
+        db_target = await session.get(User, target_id)
+        if not db_target:
+            await update.callback_query.message.reply_text("Пользователь не найден.")
+            return
+        if db_target.user_id == actor.id:
+            await update.callback_query.message.reply_text("Нельзя удалить себя.")
+            return
+        order = {"user": 1, "moderator": 2, "admin": 3}
+        if order[db_actor.role] <= order[db_target.role]:
+            await update.callback_query.message.reply_text("Нет прав на удаление пользователя.")
+            return
+        await session.delete(db_target)
+        await session.commit()
+    # Обновляем список
+    await show_users(update, context)
+
+# Отмена
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    context.user_data.pop("adding_role", None)
+    context.user_data.pop("inviter_id", None)
+    user = update.effective_user
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, user.id)
+    await update.callback_query.message.reply_text(
+        "Отменено", reply_markup=main_menu(db_user.role if db_user else "user")
+    )
 
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
@@ -231,7 +345,6 @@ def register_handlers(app):
     app.add_handler(CallbackQueryHandler(delete_user, pattern=r"^del_user:"))
     app.add_handler(CallbackQueryHandler(on_delete_queue, pattern=r"^del_queue:"))
     app.add_handler(CallbackQueryHandler(cancel, pattern=r"^cancel$"))
-    # теперь noop-перехват
     app.add_handler(CallbackQueryHandler(noop_callback, pattern=r"^noop$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
     app.add_handler(CommandHandler("queue", on_queue))
