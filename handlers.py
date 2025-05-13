@@ -63,7 +63,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             end = tomorrow.replace(hour=23, minute=59)
         else:
             start, end = now, end_of_day
-n        rand_ts = start + (end - start) * random.random()
+        rand_ts = start + (end - start) * random.random()
         transition_time = rand_ts
     # добавить в очередь
     queue_item = Queue(
