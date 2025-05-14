@@ -60,7 +60,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Текстовая «Меню» → inline-меню
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # При нажатии «Меню» тоже активируем pending-пользователя
+    # Активируем pending-пользователя при первом нажатии «Меню»
     async with AsyncSessionLocal() as session:
         res = await session.execute(
             select(User).filter_by(username=update.effective_user.username, status="pending")
@@ -221,7 +221,7 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         res = await session.execute(
             select(Queue).filter_by(user_id=user.id)
-        )  
+        )
         items = res.scalars().all()
     kb = queue_menu(items)
     await update.effective_message.reply_text("Ваша очередь:", reply_markup=kb)
@@ -247,17 +247,17 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         total = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter_by(user_id=user_id, state="success")
+              .filter_by(user_id=user_id, state="success")
         )).scalar() or 0
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter(Event.user_id==user_id, Event.state=="success", Event.timestamp>=month_start)
+              .filter(Event.user_id==user_id, Event.state=="success", Event.timestamp>=month_start)
         )).scalar() or 0
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
         week = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter(Event.user_id==user_id, Event.state=="success", Event.timestamp>=week_start)
+              .filter(Event.user_id==user_id, Event.state=="success", Event.timestamp>=week_start)
         )).scalar() or 0
 
         db_user = await fetch_db_user(session, user_id)
@@ -297,9 +297,10 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lines.append(f"{ts}: {e.initial_url} ({e.state})")
         text = "История запросов:\n" + "\n".join(lines)
 
+    db_user = None
     async with AsyncSessionLocal() as session:
         db_user = await fetch_db_user(session, user_id)
-        role = db_user.role if db_user else "user"
+    role = db_user.role if db_user else "user"
     await query.message.reply_text(text, reply_markup=main_menu(role))
 
 # Уведомления
@@ -316,19 +317,19 @@ async def show_notifications(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def set_notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
     mode = {
         "notify_each": "each",
         "notify_summary": "summary",
         "notify_none": "none"
     }[query.data]
     async with AsyncSessionLocal() as session:
-        db_user = await fetch_db_user(session, user_id)
+        db_user = await fetch_db_user(session, query.from_user.id)
         if db_user:
             db_user.notify_mode = mode
             await session.commit()
+    labels = {"each": "Каждый переход", "summary": "По окончании очереди", "none": "Отключены"}
     await query.message.reply_text(
-        f"Уведомления: {{'each':'Каждый переход','summary':'По окончании очереди','none':'Отключены'}[mode]}",
+        f"Уведомления: {labels[mode]}",
         reply_markup=main_menu(db_user.role if db_user else "user")
     )
 
@@ -336,9 +337,8 @@ async def set_notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
     async with AsyncSessionLocal() as session:
-        db_user = await fetch_db_user(session, user_id)
+        db_user = await fetch_db_user(session, query.from_user.id)
         mode = db_user.transition_mode if db_user else "immediate"
     kb = transition_mode_menu(mode)
     await query.message.reply_text("Переходы", reply_markup=kb)
@@ -346,18 +346,18 @@ async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYP
 async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
     mode = {
         "mode_immediate": "immediate",
         "mode_daily": "daily"
     }[query.data]
     async with AsyncSessionLocal() as session:
-        db_user = await fetch_db_user(session, user_id)
+        db_user = await fetch_db_user(session, query.from_user.id)
         if db_user:
             db_user.transition_mode = mode
             await session.commit()
+    labels = {"immediate": "Сразу", "daily": "В течение дня"}
     await query.message.reply_text(
-        f"Переходы: {{'immediate':'Сразу','daily':'В течение дня'}[mode]}",
+        f"Переходы: {labels[mode]}",
         reply_markup=main_menu(db_user.role if db_user else "user")
     )
 
@@ -375,14 +375,14 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     _, sid = query.data.split(":")
     target_id = int(sid)
-    actor_id = query.from_user.id
     async with AsyncSessionLocal() as session:
-        db_actor = await fetch_db_user(session, actor_id)
+        db_actor = await fetch_db_user(session, query.from_user.id)
         db_target = await fetch_db_user(session, target_id)
         if not db_target:
             await query.message.reply_text("Пользователь не найден.")
             return
-        if db_actor and db_target and {'user':1,'moderator':2,'admin':3}[db_actor.role] <= {'user':1,'moderator':2,'admin':3}[db_target.role]:
+        order = {"user": 1, "moderator": 2, "admin": 3}
+        if order.get(db_actor.role, 0) <= order.get(db_target.role, 0):
             await query.message.reply_text("Нет прав на удаление пользователя.")
             return
         await session.delete(db_target)
@@ -395,9 +395,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     context.user_data.pop("adding_role", None)
     context.user_data.pop("inviter_id", None)
-    user_id = query.from_user.id
     async with AsyncSessionLocal() as session:
-        db_user = await fetch_db_user(session, user_id)
+        db_user = await fetch_db_user(session, query.from_user.id)
         role = db_user.role if db_user else "user"
     await query.message.reply_text("Отменено", reply_markup=main_menu(role))
 
