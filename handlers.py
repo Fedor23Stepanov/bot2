@@ -4,7 +4,7 @@ import re
 import random
 from datetime import datetime, timedelta
 
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ContextTypes,
     CommandHandler,
@@ -26,18 +26,44 @@ from keyboards import (
     add_moderator_menu
 )
 
+# «Красная» клавиатура с одной non-inline кнопкой «Меню»
+RED_KEYBOARD = ReplyKeyboardMarkup(
+    [[KeyboardButton("Меню")]],
+    resize_keyboard=True
+)
+
 # /start
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Меню",
-        reply_markup=main_menu(update.effective_user.role)
+        reply_markup=RED_KEYBOARD
     )
+
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает всем пользователям inline-меню при нажатии текстовой «Меню»."""
+    # узнаём роль из БД (по умолчанию «user»)
+    role = "user"
+    async with AsyncSessionLocal() as session:
+        db_user = await session.get(User, update.effective_user.id)
+        if db_user:
+            role = db_user.role
+    await update.message.reply_text(
+        "Меню",
+        reply_markup=main_menu(role)
+    )
+
+async def hide_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Убирает текущее inline-меню, оставляя красную клавиатуру."""
+    query = update.callback_query
+    await query.answer()
+    await query.message.edit_reply_markup(reply_markup=None)
+
 
 # noop для кнопок без действия
 async def noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
-# Назад в главное меню
+# Назад в главное меню (inline → inline)
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
     user = update.effective_user
@@ -300,22 +326,23 @@ async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.message.reply_text("Пользователи", reply_markup=users_menu(all_users))
 
 async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    _, sid = update.callback_query.data.split(":")
+    query = update.callback_query
+    await query.answer()
+    _, sid = query.data.split(":")
     target_id = int(sid)
     actor = update.effective_user
     async with AsyncSessionLocal() as session:
         db_actor = await session.get(User, actor.id)
         db_target = await session.get(User, target_id)
         if not db_target:
-            await update.callback_query.message.reply_text("Пользователь не найден.")
+            await query.message.reply_text("Пользователь не найден.")
             return
         if db_target.user_id == actor.id:
-            await update.callback_query.message.reply_text("Нельзя удалить себя.")
+            await query.message.reply_text("Нельзя удалить себя.")
             return
         order = {"user": 1, "moderator": 2, "admin": 3}
         if order[db_actor.role] <= order[db_target.role]:
-            await update.callback_query.message.reply_text("Нет прав на удаление пользователя.")
+            await query.message.reply_text("Нет прав на удаление пользователя.")
             return
         await session.delete(db_target)
         await session.commit()
@@ -335,20 +362,36 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
-    app.add_handler(CallbackQueryHandler(back_to_menu,        pattern=r"^back_to_menu$"))
-    app.add_handler(CallbackQueryHandler(show_queue_cb,       pattern=r"^show_queue$"))
-    app.add_handler(CallbackQueryHandler(show_stats,          pattern=r"^show_stats$"))
-    app.add_handler(CallbackQueryHandler(show_history,        pattern=r"^show_history$"))
-    app.add_handler(CallbackQueryHandler(show_notifications,  pattern=r"^show_notifications$"))
-    app.add_handler(CallbackQueryHandler(set_notify,          pattern=r"^notify_"))
-    app.add_handler(CallbackQueryHandler(show_transition_mode,pattern=r"^show_transition_mode$"))
-    app.add_handler(CallbackQueryHandler(set_transition_mode, pattern=r"^mode_"))
-    app.add_handler(CallbackQueryHandler(show_users,          pattern=r"^show_users$"))
-    app.add_handler(CallbackQueryHandler(add_user_prompt,     pattern=r"^add_user$"))
-    app.add_handler(CallbackQueryHandler(add_moderator_prompt,pattern=r"^add_moderator$"))
-    app.add_handler(CallbackQueryHandler(delete_user,         pattern=r"^del_user:"))
-    app.add_handler(CallbackQueryHandler(on_delete_queue,     pattern=r"^del_queue:"))
-    app.add_handler(CallbackQueryHandler(cancel,              pattern=r"^cancel$"))
-    app.add_handler(CallbackQueryHandler(noop_callback,       pattern=r"^noop$"))
+
+    # inline-кнопки главного меню и другие
+    app.add_handler(CallbackQueryHandler(back_to_menu,         pattern=r"^back_to_menu$"))
+    app.add_handler(CallbackQueryHandler(show_queue_cb,        pattern=r"^show_queue$"))
+    app.add_handler(CallbackQueryHandler(show_stats,           pattern=r"^show_stats$"))
+    app.add_handler(CallbackQueryHandler(show_history,         pattern=r"^show_history$"))
+    app.add_handler(CallbackQueryHandler(show_notifications,   pattern=r"^show_notifications$"))
+    app.add_handler(CallbackQueryHandler(set_notify,           pattern=r"^notify_"))
+    app.add_handler(CallbackQueryHandler(show_transition_mode, pattern=r"^show_transition_mode$"))
+    app.add_handler(CallbackQueryHandler(set_transition_mode,  pattern=r"^mode_"))
+    app.add_handler(CallbackQueryHandler(show_users,           pattern=r"^show_users$"))
+    app.add_handler(CallbackQueryHandler(add_user_prompt,      pattern=r"^add_user$"))
+    app.add_handler(CallbackQueryHandler(add_moderator_prompt, pattern=r"^add_moderator$"))
+    app.add_handler(CallbackQueryHandler(delete_user,          pattern=r"^del_user:"))
+    app.add_handler(CallbackQueryHandler(on_delete_queue,      pattern=r"^del_queue:"))
+    app.add_handler(CallbackQueryHandler(cancel,               pattern=r"^cancel$"))
+    app.add_handler(CallbackQueryHandler(noop_callback,        pattern=r"^noop$"))
+
+    # inline-кнопка «Скрыть меню»
+    app.add_handler(
+        CallbackQueryHandler(hide_inline_menu, pattern=r"^hide_menu$")
+    )
+    # текстовая кнопка «Меню» (ReplyKeyboard) показывает inline-меню
+    app.add_handler(
+        MessageHandler(filters.Regex("^Меню$") & ~filters.COMMAND,
+                       show_main_menu)
+    )
+
+    # основной обработчик сообщений (ссылки и т. п.)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+
+    # команда /queue пушит очередь
     app.add_handler(CommandHandler("queue", on_queue))
