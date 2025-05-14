@@ -15,6 +15,13 @@ from redirector import fetch_redirect, ProxyAcquireError
 # Ограничивает одновременное выполнение fetch_redirect
 semaphore = asyncio.Semaphore(1)
 
+async def fetch_db_user(session, telegram_id: int):
+    """Возвращает User по Telegram ID или None."""
+    result = await session.execute(
+        select(User).filter_by(user_id=telegram_id)
+    )
+    return result.scalar_one_or_none()
+
 async def process_queue_item(item, bot):
     async with semaphore:
         async with AsyncSessionLocal() as session:
@@ -77,14 +84,14 @@ async def process_queue_item(item, bot):
             await session.commit()
 
             # Уведомления
-            user = await session.get(User, item.user_id)
-            if user.notify_mode == "each":
+            db_user = await fetch_db_user(session, item.user_id)
+            if db_user and db_user.notify_mode == "each":
                 await bot.send_message(
                     chat_id=item.user_id,
                     text=f"Переход: {initial_url} → {final_url} ({state})",
                     reply_to_message_id=item.message_id
                 )
-            elif user.notify_mode == "summary":
+            elif db_user and db_user.notify_mode == "summary":
                 # если очередь пуста после удаления
                 q = await session.execute(
                     select(Queue).filter_by(user_id=item.user_id)
