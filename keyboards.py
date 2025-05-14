@@ -1,3 +1,5 @@
+# keyboards.py
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def main_menu(role: str) -> InlineKeyboardMarkup:
