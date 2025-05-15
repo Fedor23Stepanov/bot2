@@ -56,7 +56,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if pending and pending.user_id is None:
             pending.user_id = update.effective_user.id
             pending.status = "activ"
-            pending.activated_date = datetime.utcnow()
+            pending.activated_date = datetime.now()
             await session.commit()
     await update.message.reply_text("Меню", reply_markup=RED_KEYBOARD)
 
@@ -73,7 +73,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if pending and pending.user_id is None:
             pending.user_id = update.effective_user.id
             pending.status = "activ"
-            pending.activated_date = datetime.utcnow()
+            pending.activated_date = datetime.now()
             await session.commit()
         role = db_user.role
     await update.message.reply_text("Меню", reply_markup=main_menu(role))
@@ -191,7 +191,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if pending:
                 pending.user_id = user.id
                 pending.status = "activ"
-                pending.activated_date = datetime.utcnow()
+                pending.activated_date = datetime.now()
                 await session.commit()
                 db_user = pending
             else:
@@ -213,7 +213,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if db_user.transition_mode == "immediate":
             transition_time = None
         else:
-            now = datetime.utcnow()
+            now = datetime.now()
             end_of_day = now.replace(hour=23, minute=59, second=59)
             if (end_of_day - now) < timedelta(hours=2):
                 tomorrow = now + timedelta(days=1)
@@ -267,7 +267,7 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
-    now = datetime.utcnow()
+    now = datetime.now()
     async with AsyncSessionLocal() as session:
         db_user = await fetch_db_user(session, user_id)
         if not db_user:
