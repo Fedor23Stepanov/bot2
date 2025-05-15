@@ -112,7 +112,7 @@ async def process_queue_item(item, bot):
 async def tick(context: CallbackContext):
     bot = context.bot
     async with AsyncSessionLocal() as session:
-        now = datetime.utcnow()
+        now = datetime.now()
         result = await session.execute(
             select(Queue).filter(
                 (Queue.transition_time <= now) | (Queue.transition_time.is_(None))
