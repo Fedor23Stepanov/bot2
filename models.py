@@ -1,7 +1,7 @@
 # models.py
 
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Enum, Boolean, ForeignKey, JSON
+    Column, Integer, String, DateTime, Enum as SQLEnum, Boolean, ForeignKey, JSON
 )
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -17,9 +17,9 @@ class User(Base):
     # Реальный Telegram ID пользователя
     user_id = Column(Integer, unique=True, nullable=True, index=True)
     username = Column(String, nullable=False, unique=True)
-    role = Column(Enum("admin", "moderator", "user"), nullable=False)
-    status = Column(Enum("activ", "pending"), nullable=False)
-    transition_mode = Column(Enum("immediate", "daily"), nullable=False, default="immediate")
+    role = Column(SQLEnum("admin", "moderator", "user", name="user_roles"), nullable=False)
+    status = Column(SQLEnum("activ", "pending", name="user_statuses"), nullable=False)
+    transition_mode = Column(SQLEnum("immediate", "daily", name="transition_modes"), nullable=False, default="immediate")
     invited_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     created_date = Column(DateTime(timezone=True), server_default=func.now())
     activated_date = Column(DateTime(timezone=True), nullable=True)
@@ -54,12 +54,13 @@ class Event(Base):
     id               = Column(Integer, primary_key=True, autoincrement=True)
     user_id          = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     device_option_id = Column(Integer, ForeignKey("device_options.id"), nullable=True)
-    state            = Column(Enum(
+    state            = Column(SQLEnum(
                           "no_link",
                           "many_links",
                           "proxy_error",
                           "redirector_error",
-                          "success"
+                          "success",
+                          name="event_states"
                        ), nullable=False)
     proxy_id         = Column(String, ForeignKey("proxy_logs.id"), nullable=True)
     initial_url      = Column(String, nullable=True)
@@ -70,8 +71,12 @@ class Event(Base):
 
 class Queue(Base):
     __tablename__ = "queue"
+
     id              = Column(Integer, primary_key=True, autoincrement=True)
+    # Telegram ID пользователя, FK на users.user_id
     user_id         = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     message_id      = Column(Integer, nullable=False)
     url             = Column(String, nullable=False)
     transition_time = Column(DateTime(timezone=True), nullable=True)
+    # Новый статус обработки: pending, in_progress, done
+    status          = Column(SQLEnum("pending", "in_progress", "done", name="queue_statuses"), nullable=False, server_default="pending")
