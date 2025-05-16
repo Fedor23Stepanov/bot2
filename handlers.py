@@ -25,9 +25,9 @@ from keyboards import (
     add_moderator_menu
 )
 
-# «Красная» клавиатура с кнопкой «Меню»
+# «Красная» клавиатура с кнопкой «☰ Меню»
 RED_KEYBOARD = ReplyKeyboardMarkup(
-    [[KeyboardButton("Меню")]],
+    [[KeyboardButton("☰ Меню")]],
     resize_keyboard=True
 )
 
@@ -52,9 +52,10 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending.status = "activ"
             pending.activated_date = datetime.now()
             await session.commit()
+    # При старте показываем кнопку «☰ Меню»
     await update.message.reply_text("Меню", reply_markup=RED_KEYBOARD)
 
-# Текстовая «Меню» → inline-меню
+# Текстовая «☰ Меню» → inline-меню
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         pending = (await session.execute(
@@ -107,10 +108,7 @@ async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
-    mode = {
-        "mode_immediate": "immediate",
-        "mode_daily": "daily"
-    }[query.data]
+    mode = {"mode_immediate": "immediate", "mode_daily": "daily"}[query.data]
     async with AsyncSessionLocal() as session:
         db_user = await fetch_db_user(session, user_id)
         if not db_user:
@@ -118,8 +116,8 @@ async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
         db_user.transition_mode = mode
         await session.commit()
         role = db_user.role
-    label = "Сразу" if mode == "immediate" else "В течение дня"
-    await query.message.edit_text(f"Переходы: {label}", reply_markup=main_menu(role))
+    # После выбора пересобираем подменю с галочкой
+    await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
 
 # Отображение очереди (inline и команда)
 async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -184,9 +182,7 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"В этом месяце: {month}\n"
         f"На этой неделе: {week}"
     )
-    back_kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
-    ])
+    back_kb = InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")]])
     await query.message.edit_text(text, reply_markup=back_kb)
 
 # История запросов
@@ -214,9 +210,7 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lines.append(f"{ts}: {e.initial_url} ({e.state})")
         text = "История запросов:\n" + "\n".join(lines)
 
-    back_kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Назад", callback_data="back_to_menu")]
-    ])
+    back_kb = InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")]])
     await query.message.edit_text(text, reply_markup=back_kb, disable_web_page_preview=True)
 
 # Пользователи
@@ -257,7 +251,7 @@ async def add_moderator_prompt(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     await query.message.edit_text(
-        "Для добавления нового модератора пришлите его ник",
+        "Для добавения нового модератора пришлите его ник",
         reply_markup=add_moderator_menu()
     )
     context.user_data["adding_role"] = "moderator"
@@ -355,7 +349,7 @@ def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
 
     app.add_handler(CallbackQueryHandler(hide_inline_menu,    pattern=r"^hide_menu$"))
-    app.add_handler(MessageHandler(filters.Regex("^Меню$") & ~filters.COMMAND, show_main_menu))
+    app.add_handler(MessageHandler(filters.Regex("^☰ Меню$") & ~filters.COMMAND, show_main_menu))
 
     app.add_handler(CallbackQueryHandler(back_to_menu,        pattern=r"^back_to_menu$"))
     app.add_handler(CallbackQueryHandler(on_queue,            pattern=r"^show_queue$"))
