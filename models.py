@@ -19,15 +19,12 @@ class User(Base):
     username = Column(String, nullable=False, unique=True)
     role = Column(Enum("admin", "moderator", "user"), nullable=False)
     status = Column(Enum("activ", "pending"), nullable=False)
-    notify_mode = Column(Enum("each", "summary", "none"),
-                         nullable=False, default="each")
-    transition_mode = Column(Enum("immediate", "daily"),
-                               nullable=False, default="immediate")
+    transition_mode = Column(Enum("immediate", "daily"), nullable=False, default="immediate")
     invited_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     created_date = Column(DateTime(timezone=True), server_default=func.now())
     activated_date = Column(DateTime(timezone=True), nullable=True)
 
-    # отношениe пригласивший ↔ приглашенные (по полю user_id)
+    # Отношение пригласивший ↔ приглашенные
     inviter = relationship(
         "User",
         remote_side=[user_id],
@@ -55,7 +52,6 @@ class ProxyLog(Base):
 class Event(Base):
     __tablename__ = "events"
     id               = Column(Integer, primary_key=True, autoincrement=True)
-    # В user_id хранится Telegram ID, FK на users.user_id
     user_id          = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     device_option_id = Column(Integer, ForeignKey("device_options.id"), nullable=True)
     state            = Column(Enum(
@@ -75,7 +71,6 @@ class Event(Base):
 class Queue(Base):
     __tablename__ = "queue"
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    # Telegram ID пользователя, FK на users.user_id
     user_id         = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     message_id      = Column(Integer, nullable=False)
     url             = Column(String, nullable=False)
