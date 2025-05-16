@@ -80,10 +80,13 @@ async def process_queue_item(item, bot):
             ))
 
             # Помечаем задачу как выполненную
-            item.status = "done"
+            db_item = await session.get(Queue, item.id)
+            db_item.status = "done"
+
+            # Фиксируем все изменения
             await session.commit()
 
-            # Мгновенное уведомление
+            # Отправляем уведомление
             db_user = await fetch_db_user(session, item.user_id)
             if db_user:
                 await bot.send_message(
@@ -97,7 +100,8 @@ async def tick(context: CallbackContext):
     bot = context.bot
     async with AsyncSessionLocal() as session:
         now = datetime.now()
-        # В одной транзакции выбираем все pending задачи и сразу помечаем in_progress
+
+        # В одной транзакции переводим pending → in_progress
         async with session.begin():
             result = await session.execute(
                 select(Queue)
@@ -106,7 +110,7 @@ async def tick(context: CallbackContext):
             items = result.scalars().all()
             for item in items:
                 item.status = "in_progress"
-        # после выхода из session.begin() транзакция коммитится
+        # session.begin() автоматически коммитит изменения
 
     # Запускаем обработку вне транзакции
     for item in items:
