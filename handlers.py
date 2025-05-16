@@ -3,6 +3,7 @@
 import re
 import random
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from telegram import (
     Update,
@@ -35,6 +36,19 @@ RED_KEYBOARD = ReplyKeyboardMarkup(
     [[KeyboardButton("☰ Меню")]],
     resize_keyboard=True,
 )
+
+def shorten_url(full_url: str, max_len: int = 30) -> str:
+    """
+    Обрезает протокол и сокращает URL до max_len символов:
+    домен + суффикс + … + последние символы.
+    """
+    parsed = urlparse(full_url)
+    rest = parsed.netloc + parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    if len(rest) <= max_len:
+        return rest
+    tail_len = max_len - len(parsed.netloc) - 1
+    tail = rest[-tail_len:] if tail_len > 0 else rest[:max_len]
+    return f"{parsed.netloc}…{tail}"
 
 async def fetch_db_user(session, telegram_id: int):
     """Возвращает объект User по Telegram ID или None."""
@@ -149,29 +163,27 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     buttons = []
     for idx, item in enumerate(items):
-        # 1) Ссылка
-        buttons.append([InlineKeyboardButton(item.url, callback_data="noop")])
+        # Ссылка (сокращённый текст, полная URL по нажатию)
+        short = shorten_url(item.url)
+        buttons.append([InlineKeyboardButton(short, url=item.url)])
 
         if item.status == "pending":
-            # pending — время + удалить
             t = item.transition_time.strftime("%H:%M %d.%m")
             buttons.append([
                 InlineKeyboardButton(t, callback_data="noop"),
                 InlineKeyboardButton("удалить", callback_data=f"del_queue:{item.id}")
             ])
         elif item.status == "in_progress":
-            # in_progress — "в процессе перехода"
             buttons.append([InlineKeyboardButton("в процессе перехода", callback_data="noop")])
 
         # разделитель между блоками (кроме последнего)
         if idx < len(items) - 1:
-            buttons.append([InlineKeyboardButton("──────────", callback_data="noop")])
+            buttons.append([InlineKeyboardButton("────────────────────────", callback_data="noop")])
 
     # кнопка «Назад»
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")])
 
     await send("Ваша очередь:", reply_markup=InlineKeyboardMarkup(buttons))
-
 
 # Удалить из очереди
 async def on_delete_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -251,14 +263,23 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines = []
         for e in events:
             ts = e.timestamp.strftime("%Y-%m-%d %H:%M")
+            init_short = shorten_url(e.initial_url)
+            init_link  = f'<a href="{e.initial_url}">{init_short}</a>'
             if e.state == "success":
-                lines.append(f"{ts}: {e.initial_url} → {e.final_url}")
+                final_short = shorten_url(e.final_url)
+                final_link  = f'<a href="{e.final_url}">{final_short}</a>'
+                lines.append(f"{ts}: {init_link} → {final_link}")
             else:
-                lines.append(f"{ts}: {e.initial_url} ({e.state})")
+                lines.append(f"{ts}: {init_link} ({e.state})")
         text = "История запросов:\n" + "\n".join(lines)
 
     back_kb = InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")]])
-    await query.message.edit_text(text, reply_markup=back_kb, disable_web_page_preview=True)
+    await query.message.edit_text(
+        text,
+        reply_markup=back_kb,
+        disable_web_page_preview=True,
+        parse_mode="HTML"
+    )
 
 # Пользователи
 async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
