@@ -77,6 +77,17 @@ async def hide_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     await query.message.edit_reply_markup(reply_markup=None)
 
+# Назад в главное меню (inline → inline)
+async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    async with AsyncSessionLocal() as session:
+        db_user = await fetch_db_user(session, query.from_user.id)
+        if not db_user:
+            return
+        role = db_user.role
+    await query.message.reply_text("Меню", reply_markup=main_menu(role))
+
 # noop для кнопок без действия
 async def noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -324,7 +335,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
 
-    app.add_handler(CallbackQueryHandler(hide_inline_menu, pattern=r"^hide_menu$"))
+    app.add_handler(CallbackQueryHandler(hide_inline_menu,  pattern=r"^hide_menu$"))
     app.add_handler(MessageHandler(filters.Regex("^Меню$") & ~filters.COMMAND, show_main_menu))
 
     app.add_handler(CallbackQueryHandler(back_to_menu,        pattern=r"^back_to_menu$"))
