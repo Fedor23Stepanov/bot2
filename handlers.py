@@ -148,25 +148,30 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )).scalars().all()
 
     buttons = []
-    for item in items:
-        # Ссылка всегда первая
+    for idx, item in enumerate(items):
+        # 1) Ссылка
         buttons.append([InlineKeyboardButton(item.url, callback_data="noop")])
 
         if item.status == "pending":
-            # pending — показываем время и кнопку удалить
+            # pending — время + удалить
             t = item.transition_time.strftime("%H:%M %d.%m")
             buttons.append([
                 InlineKeyboardButton(t, callback_data="noop"),
                 InlineKeyboardButton("удалить", callback_data=f"del_queue:{item.id}")
             ])
         elif item.status == "in_progress":
-            # in_progress — статус "в процессе перехода"
+            # in_progress — "в процессе перехода"
             buttons.append([InlineKeyboardButton("в процессе перехода", callback_data="noop")])
+
+        # разделитель между блоками (кроме последнего)
+        if idx < len(items) - 1:
+            buttons.append([InlineKeyboardButton("──────────", callback_data="noop")])
 
     # кнопка «Назад»
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")])
 
     await send("Ваша очередь:", reply_markup=InlineKeyboardMarkup(buttons))
+
 
 # Удалить из очереди
 async def on_delete_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
