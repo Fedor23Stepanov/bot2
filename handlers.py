@@ -115,7 +115,6 @@ async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         db_user.transition_mode = mode
         await session.commit()
-        role = db_user.role
     # После выбора пересобираем подменю с галочкой
     await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
 
@@ -236,7 +235,7 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         users = (await session.execute(select(User).order_by(User.role))).scalars().all()
     await query.message.edit_text("Пользователи", reply_markup=users_menu(users))
 
-# Добавление пользователя / модератора
+# Подсказка: добавить пользователя / модератора
 async def add_user_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -257,7 +256,7 @@ async def add_moderator_prompt(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data["adding_role"] = "moderator"
     context.user_data["inviter_id"] = query.from_user.id
 
-# Основной message handler
+# Основной message handler: ссылки и ввод нового пользователя
 async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text or ""
@@ -316,7 +315,20 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         url = links[0]
-        transition_time = None  # immediate only
+        # Устанавливаем время перехода сразу
+        if db_user.transition_mode == "immediate":
+            transition_time = datetime.now()
+        else:
+            now = datetime.now()
+            end_of_day = now.replace(hour=23, minute=59, second=59)
+            if (end_of_day - now) < timedelta(hours=2):
+                tomorrow = now + timedelta(days=1)
+                start = tomorrow.replace(hour=0, minute=0, second=0)
+                end = tomorrow.replace(hour=23, minute=59, second=59)
+            else:
+                start = now
+                end = end_of_day
+            transition_time = start + (end - start) * random.random()
 
         session.add(Queue(
             user_id=user.id,
@@ -343,7 +355,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         role = db_user.role
     await query.message.edit_text("Отменено", reply_markup=main_menu(role))
-
 
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
