@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from telegram.ext import CallbackContext
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from db import AsyncSessionLocal
 from models import Queue, Event, DeviceOption, User, ProxyLog
@@ -80,11 +80,7 @@ async def process_queue_item(item, bot):
             ))
 
             # Помечаем задачу как выполненную
-            await session.execute(
-                update(Queue)
-                .where(Queue.id == item.id)
-                .values(status="done")
-            )
+            item.status = "done"
             await session.commit()
 
             # Мгновенное уведомление
@@ -101,16 +97,16 @@ async def tick(context: CallbackContext):
     bot = context.bot
     async with AsyncSessionLocal() as session:
         now = datetime.now()
-
-        # Atomically move pending→in_progress and fetch those rows
-        result = await session.execute(
-            update(Queue)
-            .where(Queue.status == "pending", Queue.transition_time <= now)
-            .values(status="in_progress")
-            .returning(Queue)
-        )
-        items = result.scalars().all()
-        await session.commit()
+        # В одной транзакции выбираем все pending задачи и сразу помечаем in_progress
+        async with session.begin():
+            result = await session.execute(
+                select(Queue)
+                  .where(Queue.status == "pending", Queue.transition_time <= now)
+            )
+            items = result.scalars().all()
+            for item in items:
+                item.status = "in_progress"
+        # после выхода из session.begin() транзакция коммитится
 
     # Запускаем обработку вне транзакции
     for item in items:
