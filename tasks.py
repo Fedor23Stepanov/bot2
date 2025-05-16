@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from telegram.ext import CallbackContext
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from db import AsyncSessionLocal
 from models import Queue, Event, DeviceOption, User, ProxyLog
@@ -79,11 +79,15 @@ async def process_queue_item(item, bot):
                 isp=isp,
             ))
 
-            # Удаляем из очереди
-            await session.delete(item)
+            # Помечаем задачу как выполненную
+            await session.execute(
+                update(Queue)
+                .where(Queue.id == item.id)
+                .values(status="done")
+            )
             await session.commit()
 
-            # Всегда мгновенное уведомление
+            # Мгновенное уведомление
             db_user = await fetch_db_user(session, item.user_id)
             if db_user:
                 await bot.send_message(
@@ -98,25 +102,23 @@ async def tick(context: CallbackContext):
     async with AsyncSessionLocal() as session:
         now = datetime.now()
 
-        # Atomic selection of ready items, skipping locked rows
+        # Atomically move pending→in_progress and fetch those rows
         result = await session.execute(
-            select(Queue)
-            .where(Queue.transition_time <= now)
-            .with_for_update(skip_locked=True)
+            update(Queue)
+            .where(Queue.status == "pending", Queue.transition_time <= now)
+            .values(status="in_progress")
+            .returning(Queue)
         )
         items = result.scalars().all()
-
-        # Commit just the SELECT FOR UPDATE lock
         await session.commit()
 
-    # Запускаем обработку вне сессии, чтобы не держать транзакцию открытой
+    # Запускаем обработку вне транзакции
     for item in items:
         asyncio.create_task(process_queue_item(item, bot))
 
 def setup_scheduler(app):
     """
-    Настраивает встроенный JobQueue PTB:
+    Настраивает JobQueue PTB:
       - tick каждую минуту, первый запуск сразу.
-    Вызывать после register_handlers(app) и перед app.run_polling().
     """
     app.job_queue.run_repeating(tick, interval=60, first=0)
