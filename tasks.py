@@ -89,7 +89,8 @@ async def process_queue_item(item, bot):
                 await bot.send_message(
                     chat_id=item.user_id,
                     text=f"Переход: {initial_url} → {final_url} ({state})",
-                    reply_to_message_id=item.message_id
+                    reply_to_message_id=item.message_id,
+                    disable_web_page_preview=True
                 )
 
 async def tick(context: CallbackContext):
