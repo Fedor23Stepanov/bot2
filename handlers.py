@@ -32,12 +32,10 @@ RED_KEYBOARD = ReplyKeyboardMarkup(
 )
 
 async def fetch_db_user(session, telegram_id: int):
-    """Возвращает объект User по Telegram ID или None."""
     result = await session.execute(
         select(User).filter_by(user_id=telegram_id)
     )
     return result.scalar_one_or_none()
-
 
 # /start
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,7 +52,6 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending.activated_date = datetime.now()
             await session.commit()
     await update.message.reply_text("Меню", reply_markup=RED_KEYBOARD)
-
 
 # Текстовая «Меню» → inline-меню
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,15 +70,13 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         role = db_user.role
     await update.message.reply_text("Меню", reply_markup=main_menu(role))
 
-
 # Скрыть текущее inline-меню
 async def hide_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     await query.message.edit_reply_markup(reply_markup=None)
 
-
-# Назад в главное меню (inline → inline)
+# Назад в главное меню
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -92,11 +87,9 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         role = db_user.role
     await query.message.edit_text("Меню", reply_markup=main_menu(role))
 
-
 # noop для кнопок без действия
 async def noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
-
 
 # Подменю «Режим перехода»
 async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,51 +102,56 @@ async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYP
         mode = db_user.transition_mode
     await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
 
-
 async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
-    mode = {
-        "mode_immediate": "immediate",
-        "mode_daily": "daily"
-    }[query.data]
+    mode = {"mode_immediate": "immediate", "mode_daily": "daily"}[query.data]
     async with AsyncSessionLocal() as session:
         db_user = await fetch_db_user(session, user_id)
         if not db_user:
             return
         db_user.transition_mode = mode
         await session.commit()
+        role = db_user.role
     label = "Сразу" if mode == "immediate" else "В течение дня"
-    await query.message.edit_text(f"Переходы: {label}", reply_markup=main_menu(db_user.role))
+    await query.message.edit_text(f"Переходы: {label}", reply_markup=main_menu(role))
 
+# Отображение очереди
+async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        chat_user = query.from_user.id
+        target = query.message
+        send_fn = target.edit_text
+    else:
+        chat_user = update.effective_user.id
+        target = update.effective_message
+        send_fn = target.reply_text
 
-# Показать очередь
-async def show_queue_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
     async with AsyncSessionLocal() as session:
         items = (await session.execute(
-            select(Queue).filter_by(user_id=query.from_user.id)
+            select(Queue).filter_by(user_id=chat_user)
         )).scalars().all()
-    await query.message.edit_text("Ваша очередь:", reply_markup=queue_menu(items))
 
+    await send_fn("Ваша очередь:", reply_markup=queue_menu(items))
 
 # Удалить из очереди
 async def on_delete_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     _, sid = query.data.split(":")
+    chat_user = query.from_user.id
     async with AsyncSessionLocal() as session:
         item = await session.get(Queue, int(sid))
         if item:
             await session.delete(item)
             await session.commit()
         items = (await session.execute(
-            select(Queue).filter_by(user_id=query.from_user.id)
+            select(Queue).filter_by(user_id=chat_user)
         )).scalars().all()
     await query.message.edit_text("Ваша очередь:", reply_markup=queue_menu(items))
-
 
 # Статистика
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -175,16 +173,16 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             select(func.count()).select_from(Event)
                 .filter(Event.user_id==user_id, Event.state=="success", Event.timestamp>=week_start)
         )).scalar() or 0
+        role = (await fetch_db_user(session, user_id)).role
     text = (
         f"Статистика:\n"
         f"Всего переходов: {total}\n"
         f"В этом месяце: {month}\n"
         f"На этой неделе: {week}"
     )
-    await query.message.edit_text(text, reply_markup=main_menu((await fetch_db_user(AsyncSessionLocal(), user_id)).role))
+    await query.message.edit_text(text, reply_markup=main_menu(role))
 
-
-# История запросов
+# История запросов (без предпросмотра)
 async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -196,6 +194,8 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 .order_by(Event.timestamp.desc())
                 .limit(20)
         )).scalars().all()
+        role = (await fetch_db_user(session, user_id)).role
+
     if not events:
         text = "История запросов пуста."
     else:
@@ -207,8 +207,12 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 lines.append(f"{ts}: {e.initial_url} ({e.state})")
         text = "История запросов:\n" + "\n".join(lines)
-    await query.message.edit_text(text, reply_markup=main_menu((await fetch_db_user(AsyncSessionLocal(), user_id)).role))
 
+    await query.message.edit_text(
+        text,
+        reply_markup=main_menu(role),
+        disable_web_page_preview=True
+    )
 
 # Пользователи
 async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -218,15 +222,13 @@ async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         users = (await session.execute(select(User).order_by(User.role))).scalars().all()
     await query.message.edit_text("Пользователи", reply_markup=users_menu(users))
 
-
 async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     _, sid = query.data.split(":")
-    target_id = int(sid)
     async with AsyncSessionLocal() as session:
         db_actor = await fetch_db_user(session, query.from_user.id)
-        db_target = await fetch_db_user(session, target_id)
+        db_target = await fetch_db_user(session, int(sid))
         if db_actor and db_target:
             order = {"user": 1, "moderator": 2, "admin": 3}
             if order[db_actor.role] > order[db_target.role]:
@@ -234,7 +236,6 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await session.commit()
         users = (await session.execute(select(User).order_by(User.role))).scalars().all()
     await query.message.edit_text("Пользователи", reply_markup=users_menu(users))
-
 
 # Подсказка: добавить пользователя
 async def add_user_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -247,18 +248,16 @@ async def add_user_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["adding_role"] = "user"
     context.user_data["inviter_id"] = query.from_user.id
 
-
 # Подсказка: добавить модератора
 async def add_moderator_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     await query.message.edit_text(
-        "Для добавления нового модератора пришлите его ник",
+        "Для добавения нового модератора пришлите его ник",
         reply_markup=add_moderator_menu()
     )
     context.user_data["adding_role"] = "moderator"
     context.user_data["inviter_id"] = query.from_user.id
-
 
 # Основной message handler: ссылки и ввод нового пользователя
 async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -274,13 +273,14 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 select(User).filter_by(username=normalized)
             )).scalar_one_or_none()
             if not exists:
-                session.add(User(
+                new_user = User(
                     user_id=None,
                     username=normalized,
                     role=role_to_add,
                     status="pending",
                     invited_by=inviter_id
-                ))
+                )
+                session.add(new_user)
                 await session.commit()
                 role_name = "Модератор" if role_to_add == "moderator" else "Пользователь"
                 await update.message.reply_text(f"{role_name} @{normalized} успешно добавлен.")
@@ -339,8 +339,12 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             transition_time=transition_time
         ))
         await session.commit()
-        await update.message.reply_text("Ссылка добавлена в очередь.")
 
+        # Ответ «Ссылка добавлена» как reply
+        await update.message.reply_text(
+            "Ссылка добавлена в очередь.",
+            reply_to_message_id=update.message.message_id
+        )
 
 # Отмена
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -363,7 +367,7 @@ def register_handlers(app):
     app.add_handler(MessageHandler(filters.Regex("^Меню$") & ~filters.COMMAND, show_main_menu))
 
     app.add_handler(CallbackQueryHandler(back_to_menu,             pattern=r"^back_to_menu$"))
-    app.add_handler(CallbackQueryHandler(show_queue_cb,            pattern=r"^show_queue$"))
+    app.add_handler(CallbackQueryHandler(on_queue,                  pattern=r"^show_queue$"))
     app.add_handler(CallbackQueryHandler(show_stats,               pattern=r"^show_stats$"))
     app.add_handler(CallbackQueryHandler(show_history,             pattern=r"^show_history$"))
     app.add_handler(CallbackQueryHandler(show_transition_mode,     pattern=r"^show_transition_mode$"))
