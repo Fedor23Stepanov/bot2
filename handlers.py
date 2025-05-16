@@ -214,6 +214,36 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "История запросов:\n" + "\n".join(lines)
     await query.message.reply_text(text, reply_markup=main_menu(db_user.role))
 
+# Пользователи
+async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    async with AsyncSessionLocal() as session:
+        db_user = await fetch_db_user(session, query.from_user.id)
+        if not db_user:
+            return
+        users = (await session.execute(select(User).order_by(User.role))).scalars().all()
+    await query.message.reply_text("Пользователи", reply_markup=users_menu(users))
+
+async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    _, sid = query.data.split(":")
+    target_id = int(sid)
+    async with AsyncSessionLocal() as session:
+        db_actor = await fetch_db_user(session, user_id)
+        db_target = await fetch_db_user(session, target_id)
+        if not db_actor or not db_target:
+            return
+        order = {"user": 1, "moderator": 2, "admin": 3}
+        if order[db_actor.role] <= order[db_target.role]:
+            await query.message.reply_text("Нет прав на удаление пользователя.")
+            return
+        await session.delete(db_target)
+        await session.commit()
+    await show_users(update, context)
+
 # Подсказка: добавить пользователя
 async def add_user_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
