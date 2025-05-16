@@ -18,7 +18,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from db import AsyncSessionLocal
 from models import User, Queue, Event
@@ -60,7 +60,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending.status = "activ"
             pending.activated_date = datetime.now()
             await session.commit()
-    await update.message.reply_text("Меню", reply_markup=RED_KEYBOARD)
+        await update.message.reply_text("Меню", reply_markup=RED_KEYBOARD)
 
 # Текстовая «☰ Меню» → inline-меню
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -80,7 +80,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pending.activated_date = datetime.now()
             await session.commit()
         role = db_user.role
-    await update.message.reply_text("Меню", reply_markup=main_menu(role))
+        await update.message.reply_text("Меню", reply_markup=main_menu(role))
 
 # Скрыть текущее inline-меню
 async def hide_inline_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -97,7 +97,7 @@ async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not db_user:
             return
         role = db_user.role
-    await query.message.edit_text("Меню", reply_markup=main_menu(role))
+        await query.message.edit_text("Меню", reply_markup=main_menu(role))
 
 # noop
 async def noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -112,7 +112,7 @@ async def show_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYP
         if not db_user:
             return
         mode = db_user.transition_mode
-    await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
+        await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
 
 async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -124,7 +124,7 @@ async def set_transition_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         db_user.transition_mode = mode
         await session.commit()
-    await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
+        await query.message.edit_text("Переходы", reply_markup=transition_mode_menu(mode))
 
 # Обновлённое меню «Очередь»
 async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,27 +140,29 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         items = (await session.execute(
             select(Queue)
-              .where(
-                  Queue.user_id == user_id,
-                  Queue.status.in_(["pending", "in_progress"])
-              )
-              .order_by(Queue.transition_time)
+            .where(
+                Queue.user_id == user_id,
+                Queue.status.in_(["pending", "in_progress"])
+            )
+            .order_by(Queue.transition_time)
         )).scalars().all()
 
     buttons = []
     for item in items:
-        # ссылка
+        # Ссылка всегда первая
         buttons.append([InlineKeyboardButton(item.url, callback_data="noop")])
+
         if item.status == "pending":
-            # pending — просто статус
-            buttons.append([InlineKeyboardButton("в процессе перехода", callback_data="noop")])
-        else:
-            # in_progress — время перехода + удалить
+            # pending — показываем время и кнопку удалить
             t = item.transition_time.strftime("%H:%M %d.%m")
             buttons.append([
                 InlineKeyboardButton(t, callback_data="noop"),
                 InlineKeyboardButton("удалить", callback_data=f"del_queue:{item.id}")
             ])
+        elif item.status == "in_progress":
+            # in_progress — статус "в процессе перехода"
+            buttons.append([InlineKeyboardButton("в процессе перехода", callback_data="noop")])
+
     # кнопка «Назад»
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")])
 
@@ -188,23 +190,29 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         total = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter_by(user_id=user_id, state="success")
+            .filter_by(user_id=user_id, state="success")
         )).scalar() or 0
+
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter(Event.user_id == user_id,
-                        Event.state == "success",
-                        Event.timestamp >= month_start)
+            .filter(
+                Event.user_id == user_id,
+                Event.state == "success",
+                Event.timestamp >= month_start
+            )
         )).scalar() or 0
+
         week_start = (now - timedelta(days=now.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         week = (await session.execute(
             select(func.count()).select_from(Event)
-                .filter(Event.user_id == user_id,
-                        Event.state == "success",
-                        Event.timestamp >= week_start)
+            .filter(
+                Event.user_id == user_id,
+                Event.state == "success",
+                Event.timestamp >= week_start
+            )
         )).scalar() or 0
 
     text = (
@@ -224,12 +232,12 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as session:
         events = (await session.execute(
             select(Event)
-                .filter(
-                    Event.user_id == user_id,
-                    Event.state.in_(["success", "proxy_error"])
-                )
-                .order_by(Event.timestamp.desc())
-                .limit(20)
+            .filter(
+                Event.user_id == user_id,
+                Event.state.in_(["success", "proxy_error"])
+            )
+            .order_by(Event.timestamp.desc())
+            .limit(20)
         )).scalars().all()
 
     if not events:
@@ -267,8 +275,8 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if order[db_actor.role] > order[db_target.role]:
                 await session.delete(db_target)
                 await session.commit()
-        users = (await session.execute(select(User).order_by(User.role))).scalars().all()
-    await query.message.edit_text("Пользователи", reply_markup=users_menu(users))
+                users = (await session.execute(select(User).order_by(User.role))).scalars().all()
+                await query.message.edit_text("Пользователи", reply_markup=users_menu(users))
 
 # Добавление пользователя / модератора
 async def add_user_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -388,12 +396,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not db_user:
             return
         role = db_user.role
-    await query.message.edit_text("Отменено", reply_markup=main_menu(role))
-
+        await query.message.edit_text("Отменено", reply_markup=main_menu(role))
 
 def register_handlers(app):
     app.add_handler(CommandHandler("start", start_cmd))
-
     app.add_handler(CallbackQueryHandler(hide_inline_menu, pattern=r"^hide_menu$"))
     app.add_handler(MessageHandler(filters.Regex("^☰ Меню$") & ~filters.COMMAND, show_main_menu))
 
