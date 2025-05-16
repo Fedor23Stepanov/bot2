@@ -97,14 +97,21 @@ async def tick(context: CallbackContext):
     bot = context.bot
     async with AsyncSessionLocal() as session:
         now = datetime.now()
+
+        # Atomic selection of ready items, skipping locked rows
         result = await session.execute(
-            select(Queue).filter(
-                (Queue.transition_time <= now) | (Queue.transition_time.is_(None))
-            )
+            select(Queue)
+            .where(Queue.transition_time <= now)
+            .with_for_update(skip_locked=True)
         )
         items = result.scalars().all()
-        for item in items:
-            asyncio.create_task(process_queue_item(item, bot))
+
+        # Commit just the SELECT FOR UPDATE lock
+        await session.commit()
+
+    # Запускаем обработку вне сессии, чтобы не держать транзакцию открытой
+    for item in items:
+        asyncio.create_task(process_queue_item(item, bot))
 
 def setup_scheduler(app):
     """
