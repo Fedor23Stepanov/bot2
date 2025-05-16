@@ -83,31 +83,14 @@ async def process_queue_item(item, bot):
             await session.delete(item)
             await session.commit()
 
-            # Уведомления
+            # Всегда мгновенное уведомление
             db_user = await fetch_db_user(session, item.user_id)
-            if db_user and db_user.notify_mode == "each":
+            if db_user:
                 await bot.send_message(
                     chat_id=item.user_id,
                     text=f"Переход: {initial_url} → {final_url} ({state})",
                     reply_to_message_id=item.message_id
                 )
-            elif db_user and db_user.notify_mode == "summary":
-                # если очередь пуста после удаления
-                q = await session.execute(
-                    select(Queue).filter_by(user_id=item.user_id)
-                )
-                if not q.scalars().all():
-                    events = await session.execute(
-                        select(Event).filter_by(user_id=item.user_id, state="success")
-                    )
-                    lines = [
-                        f"{e.initial_url} → {e.final_url} в {e.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
-                        for e in events.scalars().all()
-                    ]
-                    await bot.send_message(
-                        chat_id=item.user_id,
-                        text="Сводка переходов:\n" + "\n".join(lines)
-                    )
 
 async def tick(context: CallbackContext):
     bot = context.bot
