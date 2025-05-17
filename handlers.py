@@ -178,7 +178,7 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # разделитель между блоками (кроме последнего)
         if idx < len(items) - 1:
-            buttons.append([InlineKeyboardButton("────────────────────", callback_data="noop")])
+            buttons.append([InlineKeyboardButton("──────────────────", callback_data="noop")])
 
     # кнопка «Назад»
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")])
