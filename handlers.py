@@ -178,7 +178,7 @@ async def on_queue(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # разделитель между блоками (кроме последнего)
         if idx < len(items) - 1:
-            buttons.append([InlineKeyboardButton("────────────────────────", callback_data="noop")])
+            buttons.append([InlineKeyboardButton("────────────────────", callback_data="noop")])
 
     # кнопка «Назад»
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data="back_to_menu")])
@@ -258,7 +258,7 @@ async def show_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )).scalars().all()
 
     if not events:
-        text = "История запросов пуста."
+        text = "История запросов пуста"
     else:
         lines = []
         for e in events:
@@ -349,9 +349,9 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 session.add(new_user)
                 await session.commit()
                 role_name = "Модератор" if role_to_add == "moderator" else "Пользователь"
-                await update.message.reply_text(f"{role_name} @{normalized} успешно добавлен.")
+                await update.message.reply_text(f"{role_name} @{normalized} успешно добавлен")
             else:
-                await update.message.reply_text(f"Пользователь @{normalized} уже существует.")
+                await update.message.reply_text(f"Пользователь @{normalized} уже существует")
         context.user_data.pop("adding_role", None)
         context.user_data.pop("inviter_id", None)
         return
@@ -375,12 +375,12 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not links:
             session.add(Event(user_id=user.id, state="no_link"))
             await session.commit()
-            await update.message.reply_text("в сообщение нет ссылок")
+            await update.message.reply_text("В сообщение нет ссылок")
             return
         if len(links) > 1:
             session.add(Event(user_id=user.id, state="many_links"))
             await session.commit()
-            await update.message.reply_text("пришлите одну ссылку за раз")
+            await update.message.reply_text("Пришлите одну ссылку за раз")
             return
 
         url = links[0]
@@ -407,7 +407,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await session.commit()
 
         await update.message.reply_text(
-            "Ссылка добавлена в очередь.",
+            "Ссылка добавлена в очередь ⏳",
             reply_to_message_id=update.message.message_id
         )
 
