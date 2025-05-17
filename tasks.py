@@ -155,4 +155,4 @@ def setup_scheduler(app):
     Настраивает JobQueue PTB:
       - tick каждую минуту, первый запуск сразу.
     """
-    app.job_queue.run_repeating(tick, interval=60, first=0)
+    app.job_queue.run_repeating(tick, interval=20, first=0)
