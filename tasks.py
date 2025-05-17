@@ -4,6 +4,7 @@ import asyncio
 import random
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 
 from telegram.ext import CallbackContext
 from sqlalchemy import select
@@ -14,6 +15,19 @@ from redirector import fetch_redirect, ProxyAcquireError
 
 # Ограничивает одновременное выполнение fetch_redirect
 semaphore = asyncio.Semaphore(1)
+
+def shorten_url(full_url: str, max_len: int = 30) -> str:
+    """
+    Убирает протокол и сокращает URL до max_len символов:
+    домен + … + хвост, всего не более max_len.
+    """
+    parsed = urlparse(full_url)
+    rest = parsed.netloc + parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    if len(rest) <= max_len:
+        return rest
+    tail_len = max_len - len(parsed.netloc) - 1
+    tail = rest[-tail_len:] if tail_len > 0 else rest[:max_len]
+    return f"{parsed.netloc}…{tail}"
 
 async def fetch_db_user(session, telegram_id: int):
     """Возвращает User по Telegram ID или None."""
@@ -89,11 +103,30 @@ async def process_queue_item(item, bot):
             # Отправляем уведомление
             db_user = await fetch_db_user(session, item.user_id)
             if db_user:
+                init_short = shorten_url(initial_url)
+                init_link  = f'<a href="{initial_url}">{init_short}</a>'
+
+                if state == "success":
+                    final_short = shorten_url(final_url)
+                    final_link  = f'<a href="{final_url}">{final_short}</a>'
+                    text = (
+                        "Успешный переход✅\n"
+                        f"{init_link}\n"
+                        f"⬇️ ip {ip or '—'}\n"
+                        f"{final_link}"
+                    )
+                else:
+                    text = (
+                        "Ошибка перехода ❌\n"
+                        f"{init_link}"
+                    )
+
                 await bot.send_message(
                     chat_id=item.user_id,
-                    text=f"Переход: {initial_url} → {final_url} ({state})",
-                    reply_to_message_id=item.message_id,
-                    disable_web_page_preview=True
+                    text=text,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                    reply_to_message_id=item.message_id
                 )
 
 async def tick(context: CallbackContext):
@@ -105,9 +138,10 @@ async def tick(context: CallbackContext):
         async with session.begin():
             result = await session.execute(
                 select(Queue)
-                  .where(Queue.status == "pending", Queue.transition_time <= now)
+                .where(Queue.status == "pending", Queue.transition_time <= now)
             )
             items = result.scalars().all()
+
             for item in items:
                 item.status = "in_progress"
         # session.begin() автоматически коммитит изменения
