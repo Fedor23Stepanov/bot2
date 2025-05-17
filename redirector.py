@@ -68,7 +68,7 @@ def _acquire_moscow_proxy():
         attempts.append({"attempt": attempt, "ip": ip, "city": city})
 
         # Если IP в Москве — возвращаем результат
-        if city == "Moscow":
+        if city in ("Moscow", "Moscow Oblast"):
             return proxy_auth, info, attempts
 
         # Иначе ждём перед следующей попыткой
