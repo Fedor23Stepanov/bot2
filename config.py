@@ -31,4 +31,4 @@ IP_API_URL     = os.getenv("IP_API_URL",     "http://ip-api.com/json")
 # ======================
 CHECK_INTERVAL     = int(os.getenv("CHECK_INTERVAL",     "1"))
 REDIRECT_TIMEOUT   = int(os.getenv("REDIRECT_TIMEOUT",   "20"))
-MAX_PROXY_ATTEMPTS = int(os.getenv("MAX_PROXY_ATTEMPTS", "5"))
+MAX_PROXY_ATTEMPTS = int(os.getenv("MAX_PROXY_ATTEMPTS", "10"))
